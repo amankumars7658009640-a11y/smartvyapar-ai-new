@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartVyapar AI</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f5f9;color:#172033}
+header{background:#123b70;color:white;padding:20px}
+header h2{margin:0}
+header p{margin:6px 0 0;color:#d8e7ff}
+main{padding:15px;max-width:750px;margin:auto}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:white;padding:16px;border-radius:12px;box-shadow:0 2px 8px #0001}
+.card small{color:#64748b}
+.card h2{margin:8px 0 0;color:#1260a8}
+section{background:white;padding:16px;border-radius:12px;margin-top:15px}
+h3{margin-top:0}
+input{width:100%;padding:12px;margin:6px 0 12px;border:1px solid #ccd5e1;border-radius:8px;font-size:16px}
+button{border:0;border-radius:8px;padding:11px 14px;background:#1769aa;color:white;font-size:15px;margin:3px;cursor:pointer}
+button.red{background:#c0392b}
+button.green{background:#16834b}
+.item{border-bottom:1px solid #eee;padding:12px 0}
+.item strong{display:block;margin-bottom:5px}
+.muted{color:#64748b;font-size:13px}
+.warning{color:#c0392b;font-weight:bold}
+</style>
+</head>
+<body>
+<header>
+<h2>🛍️ SmartVyapar AI</h2>
+<p>आपकी दुकान, आपका स्मार्ट मैनेजर</p>
+</header>
+<main>
+<div class="cards">
+<div class="card"><small>कुल सामान</small><h2 id="total">0</h2></div>
+<div class="card"><small>कुल स्टॉक</small><h2 id="units">0</h2></div>
+<div class="card"><small>स्टॉक की खरीद कीमत</small><h2 id="value">₹0</h2></div>
+<div class="card"><small>कम स्टॉक वाले सामान</small><h2 id="low">0</h2></div>
+</div>
+
+<section>
+<h3>➕ नया सामान जोड़ें</h3>
+<input id="name" placeholder="सामान का नाम">
+<input id="buy" type="number" placeholder="खरीद कीमत ₹">
+<input id="sell" type="number" placeholder="बिक्री कीमत ₹">
+<input id="qty" type="number" placeholder="कितना स्टॉक है?">
+<input id="limit" type="number" placeholder="कम स्टॉक की सीमा" value="5">
+<button class="green" onclick="addProduct()">सामान सेव करें</button>
+</section>
+
+<section>
+<h3>📦 सामान और स्टॉक</h3>
+<input id="search" placeholder="सामान खोजें..." oninput="render()">
+<div id="products"></div>
+</section>
+
+<section>
+<h3>🤖 SmartVyapar AI सहायक</h3>
+<p id="advice">आपकी दुकान का सहायक तैयार है। सामान जोड़कर शुरुआत करें।</p>
+<button onclick="advice()">स्टॉक रिपोर्ट देखें</button>
+</section>
+<p class="muted">SmartVyapar AI Demo Version 1.0</p>
+</main>
+
+<script>
+let products=JSON.parse(localStorage.getItem("sv_products")||"[]");
+
+function save(){
+ localStorage.setItem("sv_products",JSON.stringify(products));
+ render();
+}
+function addProduct(){
+ let name=document.getElementById("name").value.trim();
+ let buy=Number(document.getElementById("buy").value);
+ let sell=Number(document.getElementById("sell").value);
+ let qty=Number(document.getElementById("qty").value);
+ let limit=Number(document.getElementById("limit").value);
+ if(!name||buy<=0||sell<=0||qty<0){
+  alert("कृपया सही जानकारी भरें");return;
+ }
+ products.push({id:Date.now(),name,buy,sell,qty,limit});
+ save();
+ ["name","buy","sell","qty"].forEach(id=>document.getElementById(id).value="");
+ alert("सामान सेव हो गया!");
+}
+function sellOne(id){
+ let p=products.find(x=>x.id===id);
+ if(p&&p.qty>0){p.qty--;save();}
+ else alert("स्टॉक उपलब्ध नहीं है");
+}
+function addStock(id){
+ let n=Number(prompt("कितना स्टॉक जोड़ना है?"));
+ let p=products.find(x=>x.id===id);
+ if(p&&n>0){p.qty+=n;save();}
+}
+function removeProduct(id){
+ if(confirm("क्या यह सामान हटाना चाहते हैं?")){
+ products=products.filter(x=>x.id!==id);save();
+ }
+}
+function render(){
+ let q=document.getElementById("search").value.toLowerCase();
+ let filtered=products.filter(p=>p.name.toLowerCase().includes(q));
+ document.getElementById("total").innerText=products.length;
+ document.getElementById("units").innerText=products.reduce((s,p)=>s+p.qty,0);
+ document.getElementById("value").innerText="₹"+products.reduce((s,p)=>s+p.buy*p.qty,0);
+ document.getElementById("low").innerText=products.filter(p=>p.qty<=p.limit).length;
+ document.getElementById("products").innerHTML=filtered.map(p=>`
+ <div class="item">
+ <strong>${escapeHTML(p.name)}</strong>
+ <div class="muted">खरीद ₹${p.buy} | बिक्री ₹${p.sell}</div>
+ <div>स्टॉक: <b>${p.qty}</b>
+ ${p.qty<=p.limit?'<span class="warning"> कम स्टॉक!</span>':''}</div>
+ <button onclick="sellOne(${p.id})">1 बिक्री</button>
+ <button onclick="addStock(${p.id})">स्टॉक जोड़ें</button>
+ <button class="red" onclick="removeProduct(${p.id})">हटाएँ</button>
+ </div>`).join("")||"<p>अभी कोई सामान नहीं है।</p>";
+}
+function escapeHTML(s){
+ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function advice(){
+ let low=products.filter(p=>p.qty<=p.limit);
+ document.getElementById("advice").innerText=products.length?
+ "कुल "+products.length+" सामान हैं। कम स्टॉक वाले सामान: "+(low.map(p=>p.name).join(", ")||"कोई नहीं")+"."
+ :"पहले अपनी दुकान का सामान जोड़ें।";
+}
+render();
+</script>
+</body>
+</html>
